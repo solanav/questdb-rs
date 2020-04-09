@@ -11,9 +11,9 @@ pub use api::QuestDB;
 /// Custom error
 pub use error::Error;
 
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct TestData {
     id: i32,
     ts: String,
@@ -25,12 +25,17 @@ struct TestData {
 mod tests {
     use crate::api::QuestDB;
     use crate::TestData;
-    use serde::Serialize;
 
     #[tokio::test]
     async fn it_works() {
         let connection = QuestDB::new("http://192.168.1.37:9000");
-        let res = connection.exec::<TestData>("select * from readings", Some(5), None, None).await.unwrap();
+        let res = match connection.exec::<TestData>("select * from", Some(5), None, None).await {
+            Ok(res) => res,
+            Err(e) => {
+                println!("{}", e);
+                return;
+            }
+        };
         println!("{:#?}", res);
     }
 }

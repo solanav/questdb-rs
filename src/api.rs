@@ -1,5 +1,7 @@
 use reqwest::Client;
 use serde::de::DeserializeOwned;
+use crate::error::SQLError;
+use crate::Error;
 
 pub struct QuestDB {
     client: Client,
@@ -37,7 +39,7 @@ impl QuestDB {
     /// is false and metadata is included in the response.
     ///
     /// # Example
-    /// ```
+    /// ```no-test
     /// use questdb::QuestDB;
     /// use serde::{Serialize, Deserialize};
     ///
@@ -77,7 +79,15 @@ impl QuestDB {
             .json::<serde_json::Value>()
             .await?;
 
-        let deserialized = res.get("dataset").unwrap().to_owned();
+        let deserialized = match res.get("dataset") {
+            Some(d) => d,
+            None => {
+                // The SQL failed, return an error with the error data
+                let e: SQLError = serde_json::from_value(res)?;
+                return Err(Error::SQLError(e));
+            },
+        }.to_owned();
+
         let deserialized: Vec<T> = serde_json::from_value(deserialized)?;
 
         Ok(deserialized)

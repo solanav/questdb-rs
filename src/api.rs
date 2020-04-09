@@ -1,4 +1,4 @@
-use reqwest::{Client, Url};
+use reqwest::Client;
 use serde::de::DeserializeOwned;
 
 pub struct QuestDB {

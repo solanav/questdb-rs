@@ -2,7 +2,7 @@
 name = "questdb"
 description = "Connector for questdb"
 repository = "https://github.com/solanav/questdb-rs"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["solanav <solanav@qq.com>"]
 edition = "2018"
 license = "MIT"

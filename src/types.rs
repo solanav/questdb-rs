@@ -15,6 +15,7 @@ impl std::fmt::Display for Atomicity {
 }
 
 #[derive(Copy, Clone)]
+#[allow(dead_code)]
 pub enum Schema {
     Boolean,
     Byte,

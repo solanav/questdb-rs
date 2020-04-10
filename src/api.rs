@@ -5,7 +5,7 @@ use crate::Error;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
-use crate::types::{Schema, Atomicity};
+use crate::types::Atomicity;
 
 pub struct QuestDB {
     client: Client,
@@ -32,14 +32,14 @@ impl QuestDB {
     /// # Arguments
     /// * `query` - query text. It can be multi-line, but query separator, such as ; must not be
     /// included.
-    /// * `limit` - This argument is used for paging. Limit can be either in format of X, Y where X is the
-    /// lower limit and Y is the upper, or just Y. For example, limit=10,20 will return row
+    /// * `limit` - This argument is used for paging. Limit can be either in format of X, Y where X
+    /// is the lower limit and Y is the upper, or just Y. For example, limit=10,20 will return row
     /// numbers 10 thru to 20 inclusive. and limit=20 will return first 20 rows, which is
     /// equivalent to limit=0,20
-    /// * `count` - Instructs /exec to count rows and return this value in message header. Default value
-    /// is false. There is slight performance hit for requesting row count.
-    /// * `nm` - Skips metadata section of the response when true. When metadata is known and client is
-    /// paging this flag should typically be set to true to reduce response size. Default value
+    /// * `count` - Instructs /exec to count rows and return this value in message header. Default
+    /// value is false. There is slight performance hit for requesting row count.
+    /// * `nm` - Skips metadata section of the response when true. When metadata is known and client
+    /// is paging this flag should typically be set to true to reduce response size. Default value
     /// is false and metadata is included in the response.
     ///
     /// # Example
@@ -101,15 +101,46 @@ impl QuestDB {
     /// type and structure is detected automatically and usually without additional configuration.
     /// However in some cases additional configuration can be provided to augment automatic
     /// detection results.
-    pub async fn imp(&self, file_path: &'static str, /*schema: Option<Vec<(&'static str, Schema)>>,*/ table_name: Option<&'static str>,
+    ///
+    /// # Arguments
+    /// * `file_path` - Path to the file that is going to be imported
+    /// * `table_name` - Name of the table where the data will be saved
+    /// * `overwrite` - Default value is false. Set it to true to have existing table deleted before
+    ///     appending data.
+    /// * `durable` - When request is durable QuestDB will flush relevant disk cache before
+    ///     responding. Default value is false
+    /// * `atomicity` - Available values are strict and relaxed. Default value is relaxed. When
+    ///     atomicity is relaxed data rows that cannot be appended to table are discarded, thus
+    ///     allowing partial uploads. In strict mode upload fails as soon as any data error is
+    ///     encountered and all previously appended rows are rolled back.
+    ///
+    /// # Example
+    /// ```no-test
+    /// let connection = QuestDB::new("http://192.168.1.37:9000");
+    /// let res = match connection.imp(
+    ///     "./links.csv",
+    ///     Some("nu_table2"),
+    ///     Some(false),
+    ///     Some(true),
+    ///     Some(Atomicity::Strict),
+    /// ).await {
+    ///     Ok(res) => res,
+    ///     Err(e) => {
+    ///         println!("{}", e);
+    ///         return;
+    ///     }
+    /// };
+    /// ```
+    pub async fn imp(&self, file_path: &'static str, /*schema: Option<Vec<(&'static str, Schema)>>,*/ table_name: &'static str,
                      overwrite: Option<bool>, durable: Option<bool>, atomicity: Option<Atomicity>)
         -> Result<(), crate::error::Error>
     {
         let mut form = reqwest::multipart::Form::new();
-        let mut url = format!("{}/imp?fmt=json", self.url);
+        let mut url = format!("{}/imp?fmt=json&name={}", self.url, table_name);
 
-        /* Check all the optional arguments and add them to the URL
-        if let Some(s) = schema {
+        // Check all the optional arguments and add them to the URL
+
+        /*if let Some(s) = schema {
             let mut data = String::new();
 
             for (i, &(name, schema)) in s.iter().enumerate() {
@@ -122,9 +153,7 @@ impl QuestDB {
 
             form = form.part("schema", reqwest::multipart::Part::text(data));
         }*/
-        if let Some(t) = table_name {
-            url += format!("&name={}", t).as_str();
-        }
+
         if let Some(o) = overwrite {
             url += format!("&overwrite={}", o).as_str();
         }
@@ -134,8 +163,6 @@ impl QuestDB {
         if let Some(a) = atomicity {
             url += format!("&atomicity={}", a).as_str();
         }
-
-        println!("{}", url);
 
         // Read the file as bytes
         let filep = Path::new(file_path);
@@ -155,14 +182,12 @@ impl QuestDB {
         form = form.part("data", part);
 
         // Make the POST request
-        let res = self.client.post(url.as_str())
+        let _res = self.client.post(url.as_str())
             .multipart(form)
             .send()
             .await?
             .text()
             .await?;
-
-        println!("[[[{:?}]]]", res);
 
         Ok(())
     }
@@ -172,20 +197,20 @@ impl QuestDB {
     /// # Arguments
     /// * `query` - query text. It can be multi-line, but query separator, such as ; must not be
     /// included.
-    /// * `limit` - This argument is used for paging. Limit can be either in format of X, Y where X is the
-    /// lower limit and Y is the upper, or just Y. For example, limit=10,20 will return row
+    /// * `limit` - This argument is used for paging. Limit can be either in format of X, Y where X
+    /// is the lower limit and Y is the upper, or just Y. For example, limit=10,20 will return row
     /// numbers 10 thru to 20 inclusive. and limit=20 will return first 20 rows, which is
     /// equivalent to limit=0,20
     ///
     /// # Example
-    /// ```
+    /// ```no-test
     /// use questdb::QuestDB;
     /// use std::fs::File;
     ///
     /// let connection = QuestDB::new("http://192.168.1.37:9000");
     ///
-    /// let output_file = File::create("output.csv").unwrap();
-    /// let res = match connection.exp("select * from nu_table", Some(5), output_file).await {
+    /// let mut output_file = File::create("output.csv").unwrap();
+    /// let res = match connection.exp("select * from nu_table", Some(5), &mut output_file).await {
     ///     Ok(res) => res,
     ///     Err(e) => {
     ///         println!("{}", e);

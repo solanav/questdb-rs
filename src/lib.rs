@@ -26,28 +26,27 @@ struct TestData {
 mod tests {
     use crate::api::QuestDB;
     use crate::TestData;
-    use crate::types::{Schema, Atomicity};
+    use crate::types::Atomicity;
     use std::fs::File;
 
     #[tokio::test]
     async fn test_exec() {
         let connection = QuestDB::new("http://192.168.1.37:9000");
-        let res = match connection.exec::<TestData>("select * from readings", Some(5), None, None).await {
+        let _res = match connection.exec::<TestData>("select * from readings", Some(5), None, None).await {
             Ok(res) => res,
             Err(e) => {
                 println!("{}", e);
                 return;
             }
         };
-        println!("{:#?}", res);
     }
 
     #[tokio::test]
     async fn test_imp() {
         let connection = QuestDB::new("http://192.168.1.37:9000");
-        let res = match connection.imp(
+        let _res = match connection.imp(
             "./links.csv",
-            Some("nu_table2"),
+            "nu_table",
             Some(false),
             Some(true),
             Some(Atomicity::Strict),
@@ -58,7 +57,6 @@ mod tests {
                 return;
             }
         };
-        println!("{:#?}", res);
     }
 
     #[tokio::test]
@@ -66,14 +64,12 @@ mod tests {
         let connection = QuestDB::new("http://192.168.1.37:9000");
 
         let mut output_file = File::create("output.csv").unwrap();
-        let res = match connection.exp("select * from nu_table", Some(5), &mut output_file).await {
+        let _res = match connection.exp("select * from nu_table", Some(5), &mut output_file).await {
             Ok(res) => res,
             Err(e) => {
                 println!("{}", e);
                 return;
             }
         };
-
-        println!("{:#?}", res);
     }
 }

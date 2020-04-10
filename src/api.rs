@@ -3,7 +3,7 @@ use serde::de::DeserializeOwned;
 use crate::error::SQLError;
 use crate::Error;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 use crate::types::{Schema, Atomicity};
 
@@ -101,14 +101,14 @@ impl QuestDB {
     /// type and structure is detected automatically and usually without additional configuration.
     /// However in some cases additional configuration can be provided to augment automatic
     /// detection results.
-    pub async fn imp(&self, file_path: &'static str, schema: Option<Vec<(&'static str, Schema)>>, table_name: Option<&'static str>,
+    pub async fn imp(&self, file_path: &'static str, /*schema: Option<Vec<(&'static str, Schema)>>,*/ table_name: Option<&'static str>,
                      overwrite: Option<bool>, durable: Option<bool>, atomicity: Option<Atomicity>)
         -> Result<(), crate::error::Error>
     {
         let mut form = reqwest::multipart::Form::new();
         let mut url = format!("{}/imp?fmt=json", self.url);
 
-        // Check all the optional arguments and add them to the URL
+        /* Check all the optional arguments and add them to the URL
         if let Some(s) = schema {
             let mut data = String::new();
 
@@ -121,7 +121,7 @@ impl QuestDB {
             }
 
             form = form.part("schema", reqwest::multipart::Part::text(data));
-        }
+        }*/
         if let Some(t) = table_name {
             url += format!("&name={}", t).as_str();
         }
@@ -163,6 +163,53 @@ impl QuestDB {
             .await?;
 
         println!("[[[{:?}]]]", res);
+
+        Ok(())
+    }
+
+    /// Exports the result of the query to a CSV file
+    ///
+    /// # Arguments
+    /// * `query` - query text. It can be multi-line, but query separator, such as ; must not be
+    /// included.
+    /// * `limit` - This argument is used for paging. Limit can be either in format of X, Y where X is the
+    /// lower limit and Y is the upper, or just Y. For example, limit=10,20 will return row
+    /// numbers 10 thru to 20 inclusive. and limit=20 will return first 20 rows, which is
+    /// equivalent to limit=0,20
+    ///
+    /// # Example
+    /// ```
+    /// use questdb::QuestDB;
+    /// use std::fs::File;
+    ///
+    /// let connection = QuestDB::new("http://192.168.1.37:9000");
+    ///
+    /// let output_file = File::create("output.csv").unwrap();
+    /// let res = match connection.exp("select * from nu_table", Some(5), output_file).await {
+    ///     Ok(res) => res,
+    ///     Err(e) => {
+    ///         println!("{}", e);
+    ///         return;
+    ///     }
+    /// };
+    /// ```
+    pub async fn exp(&self, query: &str, limit: Option<usize>, output_file: &mut File) -> Result<(), Error> {
+        let mut url = format!("{}/exp?query={}", self.url, query);
+
+        // Check all the optional arguments and add them to the URL
+        if let Some(l) = limit {
+            url += format!("&limit={}", l).as_str();
+        }
+
+        // Make the GET request
+        let res: String = self.client.get(url.as_str())
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        // Try to write data to the file
+        output_file.write_all(res.as_bytes())?;
 
         Ok(())
     }

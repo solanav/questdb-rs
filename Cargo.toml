@@ -9,6 +9,7 @@ license = "MIT"
 readme = "README.md"
 keywords = ["questdb", "db", "connector"]
 categories = ["database"]
+documentation = "https://docs.rs/questdb"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

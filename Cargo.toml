@@ -2,7 +2,7 @@
 name = "questdb"
 description = "Connector for questdb"
 repository = "https://github.com/solanav/questdb-rs"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["solanav <solanav@qq.com>"]
 edition = "2018"
 license = "MIT"
@@ -12,7 +12,7 @@ categories = ["database"]
 documentation = "https://docs.rs/questdb"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-reqwest = { version = "0.10", features = ["json", "blocking"] }
-tokio = { version = "0.2", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.11", features = ["json", "blocking", "multipart"] }
+tokio = { version = "1", features = ["macros", "rt"] }
